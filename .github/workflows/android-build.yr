@@ -41,10 +41,10 @@ jobs:
       - name: Make Gradle Executable
         run: chmod +x android/gradlew
 
-      - name: Build Debug APK with Duplicate Class Exclusion
+      - name: Build Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon -Pandroid.useAndroidX=true -Pkotlin.stdlib.default.dependency=false
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
