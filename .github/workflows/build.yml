@@ -1,53 +1,42 @@
-name: Build APK
+name: Build Android APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      - name: Install Dependencies
-        run: npm ci
+    - name: Find and setup gradlew
+      run: find . -name "gradlew" -exec chmod +x {} + || true
 
-      - name: Build Web Assets
-        run: npm run build
+    - name: Generate dummy debug keystore
+      run: keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
 
-      - name: Add and Sync Android Platform
-        run: |
-          npx cap add android || true
-          npx cap sync android
+    - name: Build Debug APK
+      run: |
+        if [ -f "gradlew" ]; then
+          ./gradlew assembleDebug
+        elif [ -d "android" ] && [ -f "android/gradlew" ]; then
+          cd android && ./gradlew assembleDebug
+        else
+          gradle assembleDebug
+        fi
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build Debug APK
-        run: |
-          cd android
-          ./gradlew assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+    - name: Upload all APKs
+      uses: actions/upload-artifact@v4
+      with:
+        name: my-android-app
+        path: '**/*.apk'
